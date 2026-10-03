@@ -1,0 +1,50 @@
+# Configuração comum às 3 instâncias (YAML anchor)
+x-app: &app-base #cria uma instancia ancora chamada app-base pra esse bloco
+  build:
+    context: ./app
+  image: g1-messaging-app:latest
+  restart: unless-stopped
+  volumes:
+    - messages-data:/data #o mesmo para todos os containers
+  networks:
+    - messaging-net
+
+services:
+  app1:
+    <<: *app-base #o app base aponta para o bloco e o << copia as chaves dele aqui
+    container_name: app1
+    hostname: app1
+    environment:
+      INSTANCE_NAME: app1
+      PEERS: app2,app3
+    ports:
+      - "5001:5000"
+
+  app2:
+    <<: *app-base
+    container_name: app2
+    hostname: app2
+    environment:
+      INSTANCE_NAME: app2
+      PEERS: app1,app3
+    ports:
+      - "5002:5000"
+
+  app3:
+    <<: *app-base
+    container_name: app3
+    hostname: app3
+    environment:
+      INSTANCE_NAME: app3
+      PEERS: app1,app2
+    ports:
+      - "5003:5000"
+
+volumes:
+  messages-data:
+    name: messages-data
+
+networks:
+  messaging-net:
+    name: messaging-net
+    driver: bridge

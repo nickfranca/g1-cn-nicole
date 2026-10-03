@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>{{ instance }} - Mensagens</title>
+</head>
+<body>
+  <h1>Instância: {{ instance }}</h1>
+  <p>
+    Abra as outras instâncias em outras abas para ver a replicação:
+    <a href="http://localhost:5001">app1 (5001)</a> |
+    <a href="http://localhost:5002">app2 (5002)</a> |
+    <a href="http://localhost:5003">app3 (5003)</a>
+  </p>
+
+  <h2>Enviar mensagem</h2>
+  <form id="form">
+    <input id="texto" placeholder="Digite a mensagem" size="40" required>
+    <button type="submit">Enviar</button>
+  </form>
+  <pre id="resultado"></pre>
+
+  <h2>Mensagens armazenadas em {{ instance }} (<span id="total">0</span>)</h2>
+  <p><small>Atualiza sozinho a cada 2 segundos.</small></p>
+  <table border="1" cellpadding="4">
+    <thead>
+      <tr><th>Horário</th><th>Origem</th><th>Mensagem</th><th>ID</th></tr>
+    </thead>
+    <tbody id="lista"></tbody>
+  </table>
+
+  <script>
+    async function carregarMensagens() {
+      const resp = await fetch("/messages");
+      const dados = await resp.json();
+      document.getElementById("total").textContent = dados.count;
+
+      const lista = document.getElementById("lista");
+      lista.innerHTML = "";
+      // Mais recentes primeiro
+      for (const m of dados.messages.slice().reverse()) {
+        const tr = document.createElement("tr");
+        for (const valor of [new Date(m.timestamp).toLocaleString(), m.origin, m.message, m.id]) {
+          const td = document.createElement("td");
+          td.textContent = valor; // textContent evita injeção de HTML
+          tr.appendChild(td);
+        }
+        lista.appendChild(tr);
+      }
+    }
+
+    document.getElementById("form").addEventListener("submit", async (e) => {
+      e.preventDefault(); // não recarrega a página
+      const campo = document.getElementById("texto");
+      const resp = await fetch("/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: campo.value }),
+      });
+      const dados = await resp.json();
+      document.getElementById("resultado").textContent =
+        "Status HTTP: " + resp.status + "\n" + JSON.stringify(dados, null, 2);
+      campo.value = "";
+      carregarMensagens();
+    });
+
+    carregarMensagens();
+    setInterval(carregarMensagens, 2000);
+  </script>
+</body>
+</html>
